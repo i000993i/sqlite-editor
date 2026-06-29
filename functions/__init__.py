@@ -1,6 +1,9 @@
-# Инициализация модуля functions
+from . import logger
 from .database import DatabaseManager
-from .models import TableViewer, LargeTableModel
 from .import_export import ImportExportManager
-from .styles import Styles, SQLHighlighter
+from .styles import Styles
 from . import utils
+from .table_designer import TableDesigner
+from .table_viewer_virtual import TableViewerVirtual
+from .async_manager import AsyncManager
+from .sql_editor import SQLQueryPanel
