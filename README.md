@@ -79,9 +79,9 @@ openpyxl>=3.0.0
 | `F5` | Выполнить SQL запрос |
 | `Ctrl+Q` | Выход |
 
-## 🎨 Кастомизация заставки
+## 🎨 Кастомизация
 
-Для установки кастомного фона заставки создайте папку `fon` в корне проекта и добавьте изображение `splash.png`:
+Для установки кастомных иконок переходим в папку `icons` в корне проекта можно изменить, к примеру `open.svg`:
 
 ```
 проект/
@@ -89,8 +89,8 @@ openpyxl>=3.0.0
 ├── main.py
 ├── requirements.txt
 │
-└── fon/
-    └── splash.png      # Фон для заставки (рекомендуется 400x300)
+└── icons/
+    └── open.svg      # Фон для заставки (рекомендуется 400x300)
 ```
 
 Если файл отсутствует, используется темно-красный фон по умолчанию.
@@ -106,13 +106,31 @@ openpyxl>=3.0.0
 ```
 sqlite-table-viewer/
 │
-├── main.py              # Главный файл программы
-├── requirements.txt      # Зависимости проекта
-├── README.md            # Документация
-├── LICENSE              # Лицензия MIT
+├── main.py                 # Главный файл программы (точка входа)
+├── requirements.txt        # Зависимости проекта
+├── README.md               # Документация
+├── LICENSE                 # Лицензия MIT
 │
-└── fon/                 # Папка для фонового изображения заставки
-    └── splash.png
+├── functions/              # Папка с модулями
+│   ├── __init__.py         # Делает папку пакетом Python
+│   ├── database.py         # Класс DatabaseManager для работы с БД
+│   ├── models.py           # Модель таблицы и виджет TableViewer
+│   ├── import_export.py    # Класс ImportExportManager
+│   ├── dialogs.py          # Диалоговые окна
+│   ├── styles.py           # Стили и SQLHighlighter
+│   └── utils.py            # Вспомогательные функции
+│
+└── icons/                  # Папка с SVG иконками
+    ├── open.svg
+    ├── new.svg
+    ├── refresh.svg
+    ├── import.svg
+    ├── export.svg
+    ├── sql.svg
+    ├── table.svg
+    ├── database.svg
+    ├── search.svg
+    └── limit.svg
 ```
 
 ## 🔧 Работа с большими данными
