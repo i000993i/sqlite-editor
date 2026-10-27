@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SQLite Table Viewer
+Comment=SQLite database viewer and editor
+Exec=sqlite-viewer
+Icon=sqlite-viewer
+Terminal=false
+Categories=Development;Database;
+Keywords=sqlite;database;sql;
+StartupWMClass=SQLiteViewer

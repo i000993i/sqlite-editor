@@ -1,0 +1,186 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  # ============ LINUX (AppImage + .deb) ============
+  build-linux:
+    name: Linux (${{ matrix.dist }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: [appimage, deb]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1 libegl1 libxkbcommon0 libxcb-cursor0 \
+            libxcb-xinerama0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 \
+            libfuse2 fakeroot dpkg-dev desktop-file-utils \
+            fonts-dejavu-core
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: python build.py
+
+      - name: Prepare AppDir
+        if: matrix.dist == 'appimage'
+        run: |
+          APP_DIR=AppDir
+          mkdir -p $APP_DIR/usr/bin $APP_DIR/usr/share/applications \
+                   $APP_DIR/usr/share/icons/hicolor/256x256/apps
+          cp -r dist/SQLiteViewer/* $APP_DIR/usr/bin/
+          cp icons/app.png $APP_DIR/usr/share/icons/hicolor/256x256/apps/sqlite-viewer.png || true
+          cp packaging/linux/sqlite-viewer.desktop $APP_DIR/usr/share/applications/
+          ln -sf usr/bin/SQLiteViewer $APP_DIR/AppRun
+          cat > $APP_DIR/AppRun <<'EOF'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          export LD_LIBRARY_PATH="$HERE/usr/bin:$LD_LIBRARY_PATH"
+          exec "$HERE/usr/bin/SQLiteViewer" "$@"
+          EOF
+          chmod +x $APP_DIR/AppRun
+
+      - name: Download appimagetool
+        if: matrix.dist == 'appimage'
+        run: |
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+      - name: Build AppImage
+        if: matrix.dist == 'appimage'
+        run: |
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run AppDir SQLiteViewer-x86_64.AppImage
+          ls -lh SQLiteViewer-x86_64.AppImage
+
+      - name: Build .deb
+        if: matrix.dist == 'deb'
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          VERSION=${VERSION:-0.0.0}
+          PKG_ROOT=pkg
+          mkdir -p $PKG_ROOT/DEBIAN
+          mkdir -p $PKG_ROOT/opt/sqlite-viewer
+          mkdir -p $PKG_ROOT/usr/bin
+          mkdir -p $PKG_ROOT/usr/share/applications
+          mkdir -p $PKG_ROOT/usr/share/icons/hicolor/256x256/apps
+
+          cp -r dist/SQLiteViewer/* $PKG_ROOT/opt/sqlite-viewer/
+          ln -sf /opt/sqlite-viewer/SQLiteViewer $PKG_ROOT/usr/bin/sqlite-viewer
+          cp icons/app.png $PKG_ROOT/usr/share/icons/hicolor/256x256/apps/sqlite-viewer.png || true
+          cp packaging/linux/sqlite-viewer.desktop $PKG_ROOT/usr/share/applications/
+
+          cat > $PKG_ROOT/DEBIAN/control <<EOF
+          Package: sqlite-viewer
+          Version: $VERSION
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: SQLite Viewer <noreply@example.com>
+          Description: SQLite Table Viewer
+           Cross-platform SQLite database viewer/editor with dark theme,
+           SQL editor, charts and import/export.
+          Depends: libgl1, libegl1, libxkbcommon0, libxcb-cursor0, libfuse2
+          EOF
+
+          chmod -R 755 $PKG_ROOT/opt/sqlite-viewer
+          chmod 644 $PKG_ROOT/usr/share/applications/sqlite-viewer.desktop
+          dpkg-deb --build --root-owner-group $PKG_ROOT sqlite-viewer_${VERSION}_amd64.deb
+          ls -lh sqlite-viewer_*.deb
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-viewer-${{ matrix.dist }}-linux
+          path: |
+            *.AppImage
+            *.deb
+          if-no-files-found: warn
+
+  # ============ WINDOWS (x64 + x86) ============
+  build-windows:
+    name: Windows (${{ matrix.arch }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            python-arch: x64
+          - arch: x86
+            python-arch: x86
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          architecture: ${{ matrix.python-arch }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build
+        run: python build.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-viewer-windows-${{ matrix.arch }}
+          path: dist/SQLiteViewer/
+          if-no-files-found: warn
+
+  # ============ RELEASE ============
+  release:
+    name: Publish Release
+    needs: [build-linux, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/sqlite-viewer-appimage-linux/*.AppImage
+            artifacts/sqlite-viewer-deb-linux/*.deb
+            artifacts/sqlite-viewer-windows-x64/**/*
+            artifacts/sqlite-viewer-windows-x86/**/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
