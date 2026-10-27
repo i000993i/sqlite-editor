@@ -5,7 +5,11 @@ from pathlib import Path
 project_root = Path(SPECPATH)
 is_windows = sys.platform.startswith("win")
 
-icon_path = project_root / "icons" / ("app.ico" if is_windows else "app.png")
+# Иконка: .ico для Windows, .png для Linux; если нет — None
+if is_windows:
+    icon_path = project_root / "icons" / "app.ico"
+else:
+    icon_path = project_root / "icons" / "app.png"
 icon = str(icon_path) if icon_path.exists() else None
 
 a = Analysis(
@@ -29,20 +33,26 @@ a = Analysis(
 pyz = PYZ(a.pure)
 
 exe = EXE(
-    pyz, a.scripts, [],
+    pyz,
+    a.scripts,
+    [],
     exclude_binaries=True,
     name="SQLiteViewer",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
-    upx=is_windows,
+    strip=False,          # ВАЖНО: не strip на Windows — ломает DLL
+    upx=False,            # ВАЖНО: UPX ломает PyQt6 DLL
     console=False,
     disable_windowed_traceback=False,
     icon=icon,
 )
 
 coll = COLLECT(
-    exe, a.binaries, a.datas,
-    strip=False, upx=is_windows, upx_exclude=[],
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
     name="SQLiteViewer",
 )

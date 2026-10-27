@@ -1,7 +1,13 @@
-import sys
-from pathlib import Path
+"""
+Единый скрипт сборки для Windows 10/11 и Linux (Zorin/Ubuntu/Debian).
+Использование:
+    python build.py             # GUI
+    python build.py --console   # с консолью (отладка)
+"""
 import shutil
 import subprocess
+import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 
@@ -11,8 +17,49 @@ def run(cmd):
     subprocess.check_call(cmd, cwd=ROOT)
 
 
+def ensure_icons():
+    """Если icons/app.png или app.ico отсутствуют — создаём заглушки."""
+    icons = ROOT / "icons"
+    icons.mkdir(exist_ok=True)
+
+    png = icons / "app.png"
+    ico = icons / "app.ico"
+
+    if png.exists() and ico.exists():
+        return
+
+    try:
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont
+        from PyQt6.QtCore import Qt
+
+        app = QApplication.instance() or QApplication([])
+
+        pix = QPixmap(256, 256)
+        pix.fill(QColor("#1a1a1a"))
+
+        painter = QPainter(pix)
+        painter.setPen(QColor("#ff4444"))
+        font = QFont("Sans", 96, QFont.Weight.Bold)
+        painter.setFont(font)
+        painter.drawText(pix.rect(), Qt.AlignmentFlag.AlignCenter, "DB")
+        painter.end()
+
+        if not png.exists():
+            pix.save(str(png))
+            print(f"→ создана иконка {png}")
+
+        if not ico.exists() and sys.platform.startswith("win"):
+            pix.save(str(ico))
+            print(f"→ создана иконка {ico}")
+    except Exception as e:
+        print(f"⚠ Не удалось сгенерировать иконки: {e}")
+
+
 def main():
     console = "--console" in sys.argv
+
+    ensure_icons()
 
     run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
     run([sys.executable, "-m", "pip", "install", "pyinstaller"])

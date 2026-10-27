@@ -18,6 +18,9 @@ jobs:
       matrix:
         dist: [appimage, deb]
 
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: 1
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,10 +33,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libgl1 libegl1 libxkbcommon0 libxcb-cursor0 \
-            libxcb-xinerama0 libxcb-icccm4 libxcb-image0 \
-            libxcb-keysyms1 libxcb-render-util0 libxcb-shape0 \
-            libfuse2 fakeroot dpkg-dev desktop-file-utils \
+            libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
+            libxcb-shape0 libfuse2 fakeroot dpkg-dev desktop-file-utils \
             fonts-dejavu-core
 
       - name: Install Python dependencies
@@ -49,12 +52,14 @@ jobs:
         if: matrix.dist == 'appimage'
         run: |
           APP_DIR=AppDir
-          mkdir -p $APP_DIR/usr/bin $APP_DIR/usr/share/applications \
+          mkdir -p $APP_DIR/usr/bin \
+                   $APP_DIR/usr/share/applications \
                    $APP_DIR/usr/share/icons/hicolor/256x256/apps
           cp -r dist/SQLiteViewer/* $APP_DIR/usr/bin/
-          cp icons/app.png $APP_DIR/usr/share/icons/hicolor/256x256/apps/sqlite-viewer.png || true
+          if [ -f icons/app.png ]; then
+            cp icons/app.png $APP_DIR/usr/share/icons/hicolor/256x256/apps/sqlite-viewer.png
+          fi
           cp packaging/linux/sqlite-viewer.desktop $APP_DIR/usr/share/applications/
-          ln -sf usr/bin/SQLiteViewer $APP_DIR/AppRun
           cat > $APP_DIR/AppRun <<'EOF'
           #!/bin/bash
           HERE="$(dirname "$(readlink -f "${0}")")"
@@ -72,7 +77,8 @@ jobs:
       - name: Build AppImage
         if: matrix.dist == 'appimage'
         run: |
-          ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run AppDir SQLiteViewer-x86_64.AppImage
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
+            AppDir SQLiteViewer-x86_64.AppImage
           ls -lh SQLiteViewer-x86_64.AppImage
 
       - name: Build .deb
@@ -89,7 +95,9 @@ jobs:
 
           cp -r dist/SQLiteViewer/* $PKG_ROOT/opt/sqlite-viewer/
           ln -sf /opt/sqlite-viewer/SQLiteViewer $PKG_ROOT/usr/bin/sqlite-viewer
-          cp icons/app.png $PKG_ROOT/usr/share/icons/hicolor/256x256/apps/sqlite-viewer.png || true
+          if [ -f icons/app.png ]; then
+            cp icons/app.png $PKG_ROOT/usr/share/icons/hicolor/256x256/apps/sqlite-viewer.png
+          fi
           cp packaging/linux/sqlite-viewer.desktop $PKG_ROOT/usr/share/applications/
 
           cat > $PKG_ROOT/DEBIAN/control <<EOF
@@ -119,18 +127,10 @@ jobs:
             *.deb
           if-no-files-found: warn
 
-  # ============ WINDOWS (x64 + x86) ============
+  # ============ WINDOWS (x64 only) ============
   build-windows:
-    name: Windows (${{ matrix.arch }})
+    name: Windows (x64)
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            python-arch: x64
-          - arch: x86
-            python-arch: x86
 
     steps:
       - uses: actions/checkout@v4
@@ -139,7 +139,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          architecture: ${{ matrix.python-arch }}
+          architecture: x64
 
       - name: Install dependencies
         run: |
@@ -153,7 +153,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sqlite-viewer-windows-${{ matrix.arch }}
+          name: sqlite-viewer-windows-x64
           path: dist/SQLiteViewer/
           if-no-files-found: warn
 
@@ -178,7 +178,6 @@ jobs:
             artifacts/sqlite-viewer-appimage-linux/*.AppImage
             artifacts/sqlite-viewer-deb-linux/*.deb
             artifacts/sqlite-viewer-windows-x64/**/*
-            artifacts/sqlite-viewer-windows-x86/**/*
           generate_release_notes: true
           draft: false
           prerelease: false

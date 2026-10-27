@@ -11,5 +11,6 @@ AppDir/
 *.AppImage
 *.deb
 *.exe
+pkg/
 .DS_Store
 Thumbs.db
