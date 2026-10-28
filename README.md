@@ -4,8 +4,8 @@
 
 Кроссплатформенный просмотрщик и редактор SQLite баз данных с тёмной темой.
 
-Python 3.10+ | PyQt6 | pandas | NumPy | MIT License
-CI/CD: GitHub Actions (Windows x64/x86, Linux .deb / AppImage)
+Версия 2.1 | Python 3.10+ | PyQt6 | pandas | NumPy | matplotlib | MIT License
+CI/CD: GitHub Actions (Windows x64, Linux .deb / AppImage)
 
 --------------------------------------------------------------------------------
 1. О ПРИЛОЖЕНИИ
@@ -15,14 +15,15 @@ SQLite Table Viewer — это десктопное приложение для 
 и анализа баз данных SQLite. Написано на Python с использованием PyQt6 и
 оформлено в единой тёмной теме.
 
-Приложение работает под Windows 10/11 (x86 и x64) и Linux (Ubuntu, Debian,
+Приложение работает под Windows 10/11 (x64) и Linux (Ubuntu, Debian,
 Zorin OS и другие дистрибутивы на базе GNOME). Все сборки автоматизированы
 через GitHub Actions — релизы содержат .exe, .deb и .AppImage.
 
-Благодаря постраничной загрузке (виртуальная прокрутка) приложение открывает
-таблицы с миллионами записей, не загружая данные в память целиком. Все операции
-записи защищены блокировкой RLock, а длительные запросы выполняются в фоновых
-потоках с возможностью отмены.
+При запуске показывается заставка (splash screen) с прогрессом
+инициализации. Благодаря постраничной загрузке (виртуальная прокрутка)
+приложение открывает таблицы с миллионами записей, не загружая данные
+в память целиком. Все операции записи защищены блокировкой RLock, а
+длительные запросы выполняются в фоновых потоках с возможностью отмены.
 
 ВОЗМОЖНОСТИ:
   * Работа с БД: открытие .db, .sqlite, .db3, создание новых баз.
@@ -48,18 +49,19 @@ Zorin OS и другие дистрибутивы на базе GNOME). Все �
 
 sqlite-table-viewer/
 |
-+-- main.py                          # Точка входа приложения
++-- main.py                          # Точка входа приложения (UI + заставка)
 +-- build.py                         # Единый скрипт сборки (Windows/Linux)
 +-- build_app.ps1                    # Обёртка PowerShell для Windows
 +-- build_app.sh                     # Обёртка bash для Linux
 +-- requirements.txt                 # Зависимости
-+-- README.txt                       # Этот файл
++-- README.md                        # Этот файл
 +-- LICENSE                          # MIT
-+-- SQLiteViewer.spec                # PyInstaller spec-файл
++-- SQLiteViewer.spec                # PyInstaller spec-файл (GUI-сборка)
++-- SQLiteViewer_console.spec        # PyInstaller spec (консольная отладка)
 |
 +-- .github/
 |   +-- workflows/
-|       +-- build.yml                # CI: Windows x64/x86, Linux AppImage + .deb
+|       +-- build.yml                # CI: Windows x64, Linux AppImage + .deb
 |
 +-- .gitignore
 |
@@ -70,7 +72,6 @@ sqlite-table-viewer/
 |
 +-- docs/
 |   +-- SQL_EDITOR_GUIDE.md          # Руководство по SQL-редактору
-|   +-- BUILD.md                     # Подробная инструкция сборки
 |
 +-- functions/                       # Ядро приложения
 |   +-- __init__.py                  # Ленивый пакет (без побочных импортов)
@@ -85,12 +86,14 @@ sqlite-table-viewer/
 |   +-- sql_editor.py                # SQL-редактор + история + EXPLAIN
 |   +-- table_designer.py            # Визуальный редактор схемы
 |   +-- data_visualizer.py           # matplotlib-графики
-|   +-- data_analysis.py             # pandas/NumPy-аналитика
+|   +-- data_analysis.py             # класс DataAnalysis (pandas/NumPy)
 |   +-- import_export.py             # Импорт/экспорт CSV, JSON, Excel, PDF
 |
 +-- icons/
 |   +-- app.png                      # Иконка приложения для Linux
-|   +-- app.ico                      # Иконка приложения для Windows
+|   +-- app_icon.ico                 # Иконка приложения для Windows
+|   +-- splash.png                   # Ресурс заставки
+|   +-- gradient_bg.png              # Фоновый градиент
 |   +-- database.svg                 # UI-иконки
 |   +-- table.svg
 |   +-- sql.svg
@@ -106,11 +109,9 @@ sqlite-table-viewer/
 |   +-- (в релизах пишутся в user_data)
 |
 +-- tests/
-    +-- __init__.py
     +-- test_database.py             # Потокобезопасность, CRUD
-    +-- test_data_analysis.py        # describe, correlation, outliers
-    +-- test_utils.py                # Валидация имён
-    +-- test_virtual_table_model.py  # pytest-qt, загрузка страниц
+    +-- test_data_analysis.py        # null_report, correlation, outliers
+    +-- test_utils.py                # Валидация имён, format_size
 
 Примечание: каталоги logs/ и dist/ создаются при запуске/сборке,
 в репозиторий не входят.
@@ -140,8 +141,7 @@ sqlite-table-viewer/
 
 ИЗ ГОТОВОГО РЕЛИЗА (скачать со страницы Releases):
 
-  Windows 10/11 (x64)    : SQLiteViewer.exe в архиве sqlite-viewer-windows-x64.zip
-  Windows 10/11 (x86)    : SQLiteViewer.exe в архиве sqlite-viewer-windows-x86.zip
+  Windows 10/11 (x64)    : SQLiteViewer.exe в папке sqlite-viewer-windows-x64
   Linux (Ubuntu/Zorin)   : sqlite-viewer_<version>_amd64.deb
   Универсальный Linux    : SQLiteViewer-x86_64.AppImage
 
@@ -186,7 +186,7 @@ sqlite-table-viewer/
 
   1. Файл -> Открыть базу данных (Ctrl+O)
   2. Двойной клик по таблице в левой панели
-  3. Просмотр данных с поиском, пагинацией, сортировкой
+  3. Просмотр данных с поиском и постраничной навигацией
   4. Вкладка "SQL запросы" — редактор, подсветка, автодополнение
   5. Вкладка "Конструктор таблиц" — визуальное редактирование схемы
   6. Вкладка "Графики" — визуализация и отчёт
@@ -194,15 +194,19 @@ sqlite-table-viewer/
 ГОРЯЧИЕ КЛАВИШИ:
   Ctrl+O          Открыть базу данных
   Ctrl+N          Создать новую БД
-  Ctrl+F          Поиск в таблице
-  F5 / Ctrl+Enter Выполнить SQL-запрос
-  Ctrl+Space      Автодополнение SQL
   Ctrl+Q          Выход
+  F5 / Ctrl+Enter Выполнить SQL-запрос (в редакторе SQL)
+  Ctrl+Space      Автодополнение SQL
+
+Поиск по таблице выполняется через поле "Поиск по таблице..."
+(поиск по всем колонкам, дебаунс 300 мс).
 
 ЦВЕТОВАЯ СХЕМА:
-  Основной акцент : красный (#ff4444, #8b0000)
-  Выделение       : синий (#003366)
-  Фон             : тёмные оттенки (#1a1a1a, #2d2d2d, #0d0d0d)
+  Тёмная тема в нейтральных серых тонах:
+  Фон             : #0a0a0a, #0f0f0f, #1a1a1a
+  Панели/рамки    : #303030, #404040
+  Текст           : #e0e0e0, #ffffff
+  Акцент (успех)  : зелёный #2a4a2a / #90EE90
 
 --------------------------------------------------------------------------------
 6. РАБОТА С БОЛЬШИМИ ДАННЫМИ
@@ -230,14 +234,18 @@ sqlite-table-viewer/
 8. АНАЛИТИКА ДАННЫХ
 --------------------------------------------------------------------------------
 
-Модуль functions/data_analysis.py (pandas/NumPy) предоставляет:
+Модуль functions/data_analysis.py содержит класс DataAnalysis (pandas/NumPy),
+все методы статические:
 
-  * describe(df)                            — описательная статистика
-  * null_report(df)                         — отчёт по пропускам
-  * correlation(df)                         — матрица корреляций
-  * outliers_iqr(df, column)                — выбросы методом IQR
-  * group_aggregate(df, group_col, value_col, agg) — группировки
-  * full_report(df)                         — сводный отчёт
+  * DataAnalysis.from_query(connection, query, limit=100_000) — DataFrame из запроса
+  * DataAnalysis.from_table(connection, table, limit=100_000) — DataFrame из таблицы
+  * DataAnalysis.describe(df)            — описательная статистика (транспонированная)
+  * DataAnalysis.null_report(df)         — отчёт по пропускам (null_count, null_pct, dtype)
+  * DataAnalysis.detect_column_types(df) — определение типов колонок
+  * DataAnalysis.correlation(df, method="pearson") — матрица корреляций
+  * DataAnalysis.outliers_iqr(df, column)          — выбросы методом IQR
+  * DataAnalysis.group_aggregate(df, group_col, value_col, agg, top=50) — группировки
+  * DataAnalysis.full_report(df)         — сводный отчёт (строки, типы, пропуски, корреляции)
 
 Все эти функции доступны через кнопку "Отчёт" во вкладке "Графики",
 а матрица корреляций строится как отдельный тип графика.
@@ -261,23 +269,27 @@ sqlite-table-viewer/
 
   Windows 10/11:
       .\build_app.ps1
+      .\build_app.ps1 -Console      # консольная версия (отладка)
       # или
-      python build.py
+      python build.py [--console]
 
   Linux (Zorin / Ubuntu / Debian):
       chmod +x build_app.sh
       ./build_app.sh
+      ./build_app.sh --console      # консольная версия (отладка)
       # или
-      python3 build.py
+      python3 build.py [--console]
 
 Результат: dist/SQLiteViewer/SQLiteViewer[.exe].
 
 ЧТО ДЕЛАЕТ build.py:
-  1. Устанавливает зависимости из requirements.txt и PyInstaller.
-  2. Очищает build/ и dist/.
-  3. Запускает PyInstaller с SQLiteViewer.spec.
-  4. Копирует папку icons/ в сборку.
-  5. Печатает путь к готовому бинарнику.
+  1. Генерирует заглушки иконок, если app.png/app.ico отсутствуют.
+  2. Устанавливает зависимости из requirements.txt и PyInstaller.
+  3. Очищает build/ и dist/.
+  4. Запускает PyInstaller с SQLiteViewer.spec (с флагом --console
+     для отладочной сборки с консолью).
+  5. Копирует папку icons/ в сборку.
+  6. Печатает путь к готовому бинарнику.
 
 GITHUB ACTIONS:
 Файл .github/workflows/build.yml содержит три job'а:
@@ -285,7 +297,7 @@ GITHUB ACTIONS:
   Job              Матрица             Артефакты
   ---------------  ------------------  ------------------------------
   build-linux      appimage, deb       .AppImage, .deb
-  build-windows    x64, x86            папка dist/SQLiteViewer/
+  build-windows    x64                 папка dist/SQLiteViewer/
   release          —                   публикация в GitHub Releases при теге v*
 
 ТРИГГЕРЫ:
@@ -301,8 +313,7 @@ GITHUB ACTIONS:
 После успешной сборки в Releases появятся:
   SQLiteViewer-x86_64.AppImage
   sqlite-viewer_1.0.0_amd64.deb
-  sqlite-viewer-windows-x64.zip
-  sqlite-viewer-windows-x86.zip
+  папка sqlite-viewer-windows-x64/ (SQLiteViewer.exe + библиотеки)
 
 СБОРКА .DEB ВРУЧНУЮ:
   sudo apt install fakeroot dpkg-dev desktop-file-utils
@@ -344,7 +355,7 @@ GITHUB ACTIONS:
 СПЕЦИФИКА СБОРКИ ПОД WINDOWS:
   * PyInstaller на Windows автоматически подхватывает DLL из PyQt6.
   * SQLiteViewer.spec использует icons/app.ico (если есть) как иконку exe.
-  * Для x86-сборки в CI используется architecture: x86 в setup-python.
+  * Отдельный SQLiteViewer_console.spec — консольная сборка для отладки.
   * Антивирусы иногда ругаются на PyInstaller-бинарники — это известный
     false positive; можно подписать код (Code Signing), но для open-source
     проекта это не обязательно.
@@ -369,9 +380,8 @@ GITHUB ACTIONS:
 
 Тесты покрывают:
   * test_database.py              — CRUD, потокобезопасность, валидация имён
-  * test_data_analysis.py         — describe, correlation, outliers, group_aggregate
-  * test_utils.py                 — валидация имён таблиц/колонок
-  * test_virtual_table_model.py   — загрузка страниц (pytest-qt)
+  * test_data_analysis.py         — null_report, correlation, outliers, group_aggregate
+  * test_utils.py                 — валидация имён таблиц/колонок, format_size
 
 --------------------------------------------------------------------------------
 12. РАЗРАБОТКА
@@ -455,7 +465,6 @@ CI автоматически соберёт артефакты под все п
 
   [x] Редактирование ячеек
   [x] Автодополнение SQL
-  [x] Множественные вкладки запросов
   [x] Экспорт в PDF
   [x] EXPLAIN QUERY PLAN
   [x] Подсветка синтаксиса
@@ -464,8 +473,10 @@ CI автоматически соберёт артефакты под все п
   [x] Добавление/удаление строк и колонок
   [x] Графики и визуализация
   [x] Аналитика (pandas / NumPy)
-  [x] CI/CD (Windows x64/x86, Linux AppImage + .deb)
+  [x] CI/CD (Windows x64, Linux AppImage + .deb)
   [x] Кроссплатформенные логи и история запросов
+  [x] Заставка при запуске
+  [ ] Множественные вкладки SQL-запросов
   [ ] Поддержка зашифрованных БД (SQLCipher)
   [ ] Плагины
 
